@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nf3t's Schedule I Tools</title>
+<meta name="description" content="Pawn shop calculator and save file viewer for Schedule I. Everything runs in your browser.">
+<meta name="theme-color" content="#c99a44">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  :root {
+    --bg: #16130f;
+    --panel: #201b15;
+    --panel-alt: #241f16;
+    --border: #3a3226;
+    --text: #ece4d3;
+    --muted: #a89a80;
+    --accent: #c99a44;
+    --accent2: #7a6032;
+    --danger: #c15b4a;
+    --info-bg: #241d12;
+    --ok: #6fa06a;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.4;
+  }
+  a { color: var(--accent); }
+  h1 { font-size: 1.4rem; margin: 0 0 0.25rem; display: flex; align-items: center; gap: 0.55rem; }
+  .app-icon { width: 1.7em; height: 1.7em; flex-shrink: 0; }
+  .subtitle { color: var(--muted); margin: 0 0 1.5rem; font-size: 0.9rem; }
+  .mono { font-family: var(--mono); }
+  #dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 2.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    color: var(--muted);
+    background: var(--panel);
+  }
+  #dropzone.drag { border-color: var(--accent); background: var(--panel-alt); color: var(--text); }
+  #dropzone.compact { padding: 0.9rem 1rem; }
+  #dropzone strong { color: var(--text); }
+  #fileInput { display: none; }
+  #uploadErrors { margin: 1rem 0; }
+  .error {
+    background: #241512; border: 1px solid var(--danger); color: #f2beb3;
+    padding: 0.6rem 0.9rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.85rem;
+  }
+  .note {
+    background: var(--info-bg); border: 1px solid var(--accent2); color: #e8d9b8;
+    padding: 0.6rem 0.9rem; border-radius: 8px; margin-bottom: 0.9rem; font-size: 0.85rem;
+  }
+  details > summary { cursor: pointer; color: var(--muted); font-size: 0.8rem; margin-top: 0.5rem; }
+  .path-table td.platform { white-space: nowrap; font-weight: 600; }
+  .path-table td.path { display: flex; align-items: center; gap: 0.6rem; }
+  .path-table .path-text { word-break: break-all; flex: 1; min-width: 0; }
+  .path-table tr.likely td { background: var(--info-bg); }
+  .path-table tr.likely td.platform { color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  .path-table tr.likely td.platform .badge { margin-left: 0.4rem; }
+  .copy-path-btn, .small-btn {
+    background: var(--panel-alt); border: 1px solid var(--border); color: var(--text);
+    padding: 0.2rem 0.55rem; border-radius: 5px; font-size: 0.72rem; font-family: inherit;
+    cursor: pointer; flex-shrink: 0; white-space: nowrap;
+  }
+  .copy-path-btn:hover, .small-btn:hover { border-color: var(--accent); }
+  .copy-path-btn.copied { border-color: var(--ok); color: var(--ok); }
+  .save-row {
+    display: flex; align-items: center; gap: 0.6rem; margin-top: 0.75rem;
+    background: var(--panel); border: 1px solid var(--accent); border-radius: 8px;
+    padding: 0.5rem 0.7rem; font-size: 0.9rem;
+  }
+  .save-row .save-name { flex: 1; color: var(--accent); font-weight: 600; }
+  .save-row .save-meta { color: var(--muted); font-weight: normal; }
+  .save-remove-btn {
+    background: var(--panel-alt); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 5px; width: 1.6rem; height: 1.6rem; cursor: pointer; font-size: 0.8rem; flex-shrink: 0;
+  }
+  .save-remove-btn:hover { border-color: var(--danger); color: var(--danger); }
+  .picker-bar {
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.75rem 1rem; margin-top: 1rem;
+  }
+  .picker-bar label { color: var(--muted); font-size: 0.85rem; }
+  .picker-bar select, .picker-bar input, .field select, .field input, .list-search {
+    background: var(--panel-alt); color: var(--text); border: 1px solid var(--border);
+    padding: 0.4rem 0.7rem; border-radius: 6px; font-size: 0.9rem; font-family: inherit;
+  }
+  .picker-bar select { flex: 1; min-width: 160px; }
+  .picker-bar input[type="number"] { width: 7rem; }
+  .picker-bar select:focus, .picker-bar input:focus, .field select:focus, .field input:focus, .list-search:focus { outline: none; border-color: var(--accent); }
+  .picker-bar .hint { color: var(--muted); font-size: 0.8rem; }
+  .view-tab, .section-nav button {
+    background: var(--panel-alt); border: 1px solid var(--border); color: var(--text);
+    padding: 0.4rem 0.9rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; font-family: inherit;
+  }
+  .view-tab:hover, .section-nav button:hover:not(:disabled) { border-color: var(--accent); }
+  .view-tab.active { border-color: var(--accent); color: var(--accent); }
+  .view-tab:disabled { opacity: 0.4; cursor: not-allowed; }
+  .view-tab:disabled:hover { border-color: var(--border); }
+  .compare-table th, .compare-table td { white-space: nowrap; }
+  .cmp-best { color: var(--ok); font-weight: 600; }
+  .cmp-worst { color: var(--danger); }
+  .cell-steam-id a, .kv a { color: var(--accent); text-decoration: underline dotted; }
+  .cell-steam-id a:hover, .kv a:hover { text-decoration: underline solid; }
+  .nickname-input {
+    background: var(--panel-alt); color: var(--text); border: 1px solid var(--border);
+    padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-family: inherit; width: 100%; min-width: 8rem;
+  }
+  .nickname-input:focus { outline: none; border-color: var(--accent); }
+  .toprow { display: flex; justify-content: flex-end; margin-top: 0.9rem; }
+  .small-btn.danger:hover { border-color: var(--danger); }
+  .section-nav { display: flex; align-items: center; gap: 0.6rem; }
+  .section-nav button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .sections { display: flex; flex-direction: column; gap: 1.25rem; margin-top: 1.25rem; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.3rem;
+  }
+  .card h2 { margin: 0 0 0.9rem; font-size: 1rem; color: var(--accent); display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .card h2 .count { color: var(--muted); font-weight: normal; font-size: 0.8rem; }
+  .section-desc { margin: -0.4rem 0 0.9rem; font-size: 0.85rem; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
+  .tile { background: var(--panel-alt); border-radius: 8px; padding: 0.6rem 0.8rem; }
+  .tile .label { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; }
+  .tile .value { font-size: 1.15rem; font-weight: 600; margin-top: 0.15rem; word-break: break-word; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .03em; }
+  tr:last-child td { border-bottom: none; }
+  tr.sel td { color: var(--accent); font-weight: 600; }
+  .kv td:first-child { width: 40%; color: var(--muted); }
+  .empty { color: var(--muted); font-size: 0.85rem; font-style: italic; }
+  .good { color: var(--ok); } .bad { color: var(--danger); }
+  .field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.8rem; }
+  .field label { color: var(--muted); font-size: 0.8rem; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0 0.9rem; }
+  .big-value { font-size: 2rem; font-weight: 600; margin: 0.2rem 0; }
+  .list-search { display: block; width: 100%; margin-bottom: 0.6rem; }
+  .barwrap { background: var(--panel-alt); border-radius: 4px; overflow: hidden; height: 8px; width: 100%; min-width: 80px; }
+  .bar { background: var(--accent); height: 100%; }
+  .badge {
+    font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+    border: 1px solid var(--accent2); color: var(--accent); border-radius: 999px; padding: 0.1rem 0.5rem;
+  }
+  .badge.code { border-color: var(--danger); color: #e09a8c; }
+  .badge.save { border-color: var(--ok); color: var(--ok); }
+  .wip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1.25rem; }
+  .wip-grid .card h2 { margin-bottom: 0.5rem; }
+  .wip-grid .card p { margin: 0 0 0.6rem; font-size: 0.85rem; }
+  .wip-grid .needs { color: var(--muted); font-size: 0.78rem; margin: 0; }
+  .credits {
+    margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 0.78rem; line-height: 1.6;
+  }
+  .credits ul { margin: 0.4rem 0; padding-left: 1.2rem; }
+  .build-info { margin-top: 0.75rem; color: var(--muted); font-size: 0.72rem; }
+  @media (max-width: 640px) {
+    body { padding: 1rem; }
+    .path-table, .path-table tbody, .path-table tr, .path-table td { display: block; width: 100%; }
+    .path-table td { border-bottom: none; padding: 0; }
+    .path-table tr { margin-bottom: 0.75rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border); }
+    .path-table td.path { flex-direction: column; align-items: flex-start; gap: 0.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1><img src="icon.svg" alt="" class="app-icon">Schedule I Tools</h1>
+<p class="subtitle">A pawn shop calculator and save viewer for Schedule I. Drop a zip of your save folder to fill in the day and see your stats. Everything is read in your browser; nothing is uploaded.</p>
+
+<div id="dropzone">
+  <div><strong>Click to choose a file</strong> or drag &amp; drop it here</div>
+  <div style="margin-top:.4rem; font-size:.8rem;">Expects a <span class="mono">.zip</span> of a <span class="mono">SaveGame_N</span> folder (or just its <span class="mono">Time.json</span> to set the day)</div>
+  <input type="file" id="fileInput" accept=".zip,.json">
+</div>
+
+<details id="findFileHelp" open style="margin-top: 0.75rem;">
+  <summary style="font-weight: 600;">Where do I find my save?</summary>
+  <table class="path-table" style="margin-top: 0.6rem;">
+    <tbody>
+      <tr data-os="windows"><td class="platform">Windows (Steam)</td><td class="mono path"><span class="path-text">%USERPROFILE%\AppData\LocalLow\TVGS\Schedule I\Saves\</span><button type="button" class="copy-path-btn" title="Copy path">Copy</button></td></tr>
+      <tr data-os="linux"><td class="platform">Steam Deck / Linux (Proton)</td><td class="mono path"><span class="path-text">~/.local/share/Steam/steamapps/compatdata/3164500/pfx/drive_c/users/steamuser/AppData/LocalLow/TVGS/Schedule I/Saves/</span><button type="button" class="copy-path-btn" title="Copy path">Copy</button></td></tr>
+      <tr data-os="linux"><td class="platform">Linux (Flatpak Steam)</td><td class="mono path"><span class="path-text">~/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/compatdata/3164500/pfx/drive_c/users/steamuser/AppData/LocalLow/TVGS/Schedule I/Saves/</span><button type="button" class="copy-path-btn" title="Copy path">Copy</button></td></tr>
+      <tr data-os="mac"><td class="platform">macOS (CrossOver)</td><td class="mono path"><span class="path-text">~/Library/Application Support/CrossOver/Bottles/&lt;bottle&gt;/drive_c/users/crossover/AppData/LocalLow/TVGS/Schedule I/Saves/</span><button type="button" class="copy-path-btn" title="Copy path">Copy</button></td></tr>
+      <tr data-os="mac"><td class="platform">macOS (Whisky)</td><td class="mono path"><span class="path-text">~/Library/Containers/com.isaacmarovitz.Whisky/Bottles/&lt;bottle&gt;/drive_c/users/crossover/AppData/LocalLow/TVGS/Schedule I/Saves/</span><button type="button" class="copy-path-btn" title="Copy path">Copy</button></td></tr>
+    </tbody>
+  </table>
+  <p style="color: var(--muted); font-size: 0.78rem; margin: 0.6rem 0 0;">Inside is a folder named after your Steam ID, with one <span class="mono">SaveGame_N</span> folder per save slot. Zip the slot's folder (on Windows: right-click it and choose "Compress to ZIP file"), then drop the zip here.</p>
+  <p style="color: var(--muted); font-size: 0.78rem; margin: 0.4rem 0 0;">Schedule I only has a Windows build, so on Linux, Steam Deck and macOS the save sits inside the compatibility layer's emulated Windows drive. <span class="mono">3164500</span> is the game's Steam app ID. If the game is installed on an SD card or a second drive, look for <span class="mono">steamapps/compatdata/3164500</span> in that drive's Steam library instead. On macOS, replace <span class="mono">&lt;bottle&gt;</span> with the name of the bottle the game is installed in.</p>
+</details>
+
+<div id="saveList"></div>
+<div id="uploadErrors"></div>
+
+<div id="viewTabs" class="picker-bar">
+  <label>Tab</label>
+  <button type="button" class="view-tab" data-tab="pawn">Pawn Shop</button>
+  <button type="button" class="view-tab" data-tab="stats">Save Stats</button>
+  <button type="button" class="view-tab" data-tab="compare" id="tabCompare" disabled title="Needs a save with two or more players">Compare Players</button>
+  <button type="button" class="view-tab" data-tab="players">Known Players</button>
+  <button type="button" class="view-tab" data-tab="data">Game Data</button>
+  <button type="button" class="view-tab" data-tab="wip">Work in Progress</button>
+</div>
+
+<!-- ==================== Pawn Shop ==================== -->
+<div id="panel-pawn" class="panel">
+  <div class="picker-bar">
+    <label for="day">Day</label>
+    <input id="day" type="number" min="0" value="0">
+    <span id="dayHint" class="hint"></span>
+  </div>
+  <div class="sections">
+    <div class="card" data-section-title="Best item to buy and pawn">
+      <h2>Best item to buy and pawn</h2>
+      <p class="section-desc">Every store-bought item, priced on its best day in the window, ranked by profit per item at the shop's opening offer.</p>
+      <div class="fields">
+        <div class="field"><label for="span">Sell within the next (days, counting today as well)</label><input id="span" type="number" min="0" value="3"></div>
+      </div>
+      <div id="bestSummary"></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Item</th><th>Buy at</th><th>Store price</th><th>Sell on</th><th>Shop offer</th><th>Profit</th><th>Return</th></tr></thead>
+        <tbody id="bestRows"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" data-section-title="Price one item">
+      <h2>Price one item</h2>
+      <p class="section-desc">The pawn shop's opening offer for one item on the chosen day, and for the two weeks after.</p>
+      <div class="fields">
+        <div class="field"><label for="item">Item</label><select id="item"></select></div>
+        <div class="field"><label for="qty">Quantity</label><input id="qty" type="number" min="1" value="1"></div>
+      </div>
+      <div id="offer" class="big-value"></div>
+      <div id="detail" style="font-size:.85rem; margin-bottom:.9rem;"></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Day</th><th>Weekday</th><th>Multiplier</th><th>Shop offer</th><th>vs. store price</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" data-section-title="Multiplier calendar">
+      <h2>Multiplier calendar</h2>
+      <p class="section-desc">The daily multiplier applied to an item's base resale value. It is the same for every item, and runs from about 0.55 to 2.0.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Day</th><th>Weekday</th><th>Multiplier</th><th style="width:45%"></th></tr></thead>
+        <tbody id="calendarRows"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Save Stats ==================== -->
+<div id="panel-stats" class="panel" hidden>
+  <div class="sections" id="statsSections"></div>
+</div>
+
+<!-- ==================== Compare Players ==================== -->
+<div id="panel-compare" class="panel" hidden>
+  <p class="subtitle" id="compareHeading" style="margin: 1rem 0 0;"></p>
+  <div class="sections" id="compareSections"></div>
+</div>
+
+<!-- ==================== Known Players ==================== -->
+<div id="panel-players" class="panel" hidden>
+  <div class="sections">
+    <div class="card">
+      <h2>Known Players <span class="count" id="knownCount"></span></h2>
+      <p class="section-desc">Every player found in the saves you have loaded in this browser, with a link to their Steam profile. Saves hold no player names, so give each one a nickname and it is used everywhere else on the page. This list is kept in this browser only.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Nickname</th><th>Steam ID</th><th>Seen in</th><th>In the loaded save</th></tr></thead>
+        <tbody id="knownRows"></tbody>
+      </table></div>
+      <div class="toprow"><button type="button" class="small-btn danger" id="clearKnownBtn" title="Forgets every remembered Steam ID and nickname. Players in the currently loaded save are listed again, without nicknames.">Clear known players</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Game Data ==================== -->
+<div id="panel-data" class="panel" hidden>
+  <div class="sections">
+    <div class="card" data-section-title="Items">
+      <h2>Items <span class="count" id="itemCount"></span></h2>
+      <p class="section-desc">Every item the pawn shop accepts, with its store price and resale values. Extracted from game version 0.4.7f12.</p>
+      <input type="text" id="itemSearch" class="list-search" placeholder="Search items or stores...">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Item</th><th>Store price</th><th>Resell</th><th>Pawn range</th><th>Sold at</th></tr></thead>
+        <tbody id="itemRows"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" data-section-title="Stores">
+      <h2>Stores</h2>
+      <p class="section-desc">What each store sells that the pawn shop will take. Store prices never differ from an item's base price in this game version.</p>
+      <div class="fields">
+        <div class="field"><label for="store">Store</label><select id="store"></select></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Item</th><th>Store price</th><th>Pawn range</th></tr></thead>
+        <tbody id="storeRows"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card" data-section-title="How the pawn price works">
+      <h2>How the pawn price works</h2>
+      <p class="section-desc">Read from the game's code (<span class="mono">PawnShopInterface.GetItemValue</span>). Not checked against offers in the running game.</p>
+      <div class="table-wrap"><table class="kv"><tbody>
+        <tr><td>Value</td><td>store price &times; resell multiplier &times; quantity &times; daily multiplier</td></tr>
+        <tr><td>Opening offer</td><td>the total value of the items in the five pawn slots, rounded</td></tr>
+        <tr><td>Daily multiplier</td><td>a hash of the second letter of the item's name plus the elapsed day number, mapped to 0.5&ndash;2.0 and passed through a curve. The letter has almost no effect, so every item gets the same multiplier each day.</td></tr>
+        <tr><td>Day pattern</td><td>days 10&ndash;99 depend only on the tens digit (ten days in a row are identical); days 100&ndash;999 depend on the hundreds and ones digits (a ten-day cycle)</td></tr>
+        <tr><td>Rounding</td><td>none up to $25, then to the nearest $5 up to $100, $10 up to $1,000, $50 up to $10,000, $100 up to $100,000, $500 up to $1,000,000</td></tr>
+        <tr><td>Accepted items</td><td>legal items only, and not cash</td></tr>
+        <tr><td>Not modelled</td><td>haggling after the opening offer</td></tr>
+      </tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Work in Progress ==================== -->
+<div id="panel-wip" class="panel" hidden>
+  <div class="note" style="margin-top:1rem;">None of these exist yet. Each card says what it would need: data that is already in the save file, or game code that still has to be analysed.</div>
+  <div class="wip-grid" id="wipGrid"></div>
+</div>
+
+<footer class="credits">
+  <p>Schedule I has no published formulas or save format. The numbers here come from:</p>
+  <ul>
+    <li><a href="https://github.com/Perfare/Il2CppDumper" target="_blank" rel="noopener">Il2CppDumper</a> and GNU objdump, used to read the pawn shop code out of the game's IL2CPP build.</li>
+    <li><a href="https://github.com/K0lb3/UnityPy" target="_blank" rel="noopener">UnityPy</a>, used to read item prices, store listings and the pawn shop's price curve from the game's asset files.</li>
+    <li>A save file from game version 0.4.6f13, used to work out the save layout.</li>
+  </ul>
+  <p>See <span class="mono">README.md</span> in this project for how the pawn formula was tracked down and how to redo it after a game update. This is a fan-made tool and is not affiliated with TVGS.</p>
+</footer>
+
+<footer id="buildInfo" class="build-info"></footer>
+
+<script>
+// ITEMS: [name, BasePurchasePrice, ResellMultiplier, [indexes into SHOPS that sell it]]
+// Legal items only (the pawn slots reject everything else, and cash). The store price is always
+// BasePurchasePrice: no shop listing in this game version overrides it.
+const SHOPS = ["Albert Hoover", "Arms Dealer", "Bleuball's Boutique", "Dan's Hardware", "Fungal Phil", "Gas-Mart (Central)", "Gas-Mart (West)", "Handy Hank's Hardware", "Oscar's Store", "Salvador Moreno", "Thrifty Threads"];
+const ITEMS = [["AC Unit",1800,0.5,[3,7]],["Acid",40,0.5,[8]],["Addy",9,0.5,[5,6]],["Air Pot",120,0.5,[8]],["Antique Wall Lamp",100,0.5,[2]],["Apron",100,0.5,[10]],["Aqua Tie-Dye Shirt",100,0.5,[]],["Artwork (Beach Day)",23,1,[2]],["Artwork (Lines)",3000,1,[2]],["Artwork (Menace)",500,1,[2]],["Artwork (Millie)",8000,1,[2]],["Artwork (Offer)",1000,1,[2]],["Artwork (Rapscallion)",4000,1,[2]],["Baggie",1,0.5,[3,5,6,7,8]],["Banana",2,0.5,[5,6]],["Baseball Bat",50,0.25,[1]],["Battery",8,0.5,[5,6]],["Beanie",25,0.5,[10]],["Bed",150,0.5,[3,5,6,7,8]],["Beer Hat",200,0.5,[]],["Belt",40,0.5,[10]],["Big Sprinkler",1000,0.5,[3,7,8]],["Biker Jacket",300,0.5,[]],["Black Rubber Mat (1x1)",5,0.5,[3,7]],["Black Rubber Mat (2x2)",20,0.5,[3,7]],["Black Rubber Mat (4x4)",40,0.5,[3,7]],["Blazer",150,0.5,[10]],["Blue Tie",200,0.8,[]],["Bomb",5000,0.5,[]],["Brick",1,0.5,[]],["Brick Press",800,0.5,[8]],["Browline Glasses",150,0.5,[10]],["Brown Tie",200,0.8,[]],["Brut du Gloop",2500,0.8,[2]],["Bucket Hat",40,0.5,[10]],["Button-Up Shirt",80,0.5,[10]],["Button-Up Shirt (Rolled)",80,0.5,[10]],["Cap",40,0.5,[10]],["Cargo Pants",50,0.5,[10]],["Cauldron",3000,0.5,[8]],["Cheap Skateboard",75,0.5,[]],["Chef Hat",80,0.5,[10]],["Chemistry Station",1000,0.5,[8]],["Chili",7,0.5,[5,6]],["Château La Peepee",1500,0.8,[2]],["Coca Seed",150,0.5,[9]],["Coffee Table",120,0.5,[3,7]],["Collar Jacket",120,0.5,[10]],["Combat Boots",60,0.5,[10]],["Conference Table",3500,0.5,[]],["Cowboy Hat",80,0.5,[10]],["Cruiser",500,0.5,[]],["Cuke",2,0.5,[5,6]],["Dirty Tank Top",8,0.5,[10]],["Display Cabinet",250,0.5,[3,7]],["Donut",3,0.5,[5,6]],["Dress Shoes",60,0.5,[10]],["Drying Rack",250,0.5,[8]],["Dumpster",120,0.5,[]],["Electric Plant Trimmers",50,0.5,[3,7]],["Energy Drink",6,0.5,[5,6]],["Extra Long-Life Soil",60,0.5,[3,7,8]],["Fertilizer",30,0.5,[3,4,7]],["Filing Cabinet",40,0.5,[]],["Fingerless Gloves",50,0.5,[10]],["Flannel Shirt",80,0.5,[10]],["Flashlight",15,0.5,[3,7]],["Flat Cap",40,0.5,[10]],["Flats",40,0.5,[10]],["Floor Lamp",25,0.5,[3,7]],["Flu Medicine",5,0.5,[5,6]],["Friendly Note #1",1,0.5,[]],["Friendly Note #2",1,0.5,[]],["Friendly Note #3",1,0.5,[]],["Frying Pan",100,0.25,[1]],["Full Spectrum Grow Light",200,0.5,[8]],["Garbage Throne",1000,0.5,[]],["Gasoline",5,0.5,[5,6,8]],["Gloves",50,0.5,[10]],["Gold Aviators",250,0.5,[10]],["Gold Bar",10000,0.9,[2]],["Gold Chain",5000,0.8,[2]],["Gold Watch",5000,0.8,[2]],["Golden M1911",25000,0.5,[1]],["Golden Skateboard",1500,0.5,[]],["Golden Toilet",50000,0.9,[2]],["Graffiti Cleaner",10,0.5,[5,6]],["Grain Bag",20,0.5,[4]],["Granddaddy Purple Seed",45,0.5,[0]],["Grandfather Clock",3000,0.75,[2]],["Green Crack Seed",40,0.5,[0]],["Green Tie",200,0.8,[]],["Grow Tent",100,0.5,[3,7]],["Halogen Grow Light",40,0.5,[8]],["Heart Shades",100,0.5,[]],["Horse Semen",9,0.5,[5,6]],["Hot Shirt",80,0.5,[10]],["Huge Storage Closet",500,0.5,[3,7]],["Iodine",8,0.5,[5,6]],["Jar",3,0.5,[3,5,6,7,8]],["Jeans",50,0.5,[10]],["Jet Helmet",250,0.5,[]],["Jorts",50,0.5,[10]],["Jukebox",1500,0.6,[2]],["LED Grow Light",80,0.5,[8]],["Lab Oven",1000,0.5,[8]],["Large Storage Closet",300,0.5,[3,7]],["Large Storage Rack",60,0.5,[3,7]],["Laundering Station",500,0.5,[]],["Leather Jacket",300,0.5,[10]],["Legend Sunglasses",100,0.5,[10]],["Lightweight Skateboard",500,0.5,[]],["Locker",150,0.5,[3,7]],["Long Skirt",50,0.5,[10]],["Long-Life Soil",30,0.5,[3,7,8]],["M1911",2500,0.25,[1]],["M1911 Magazine",20,0.5,[1]],["Machete",250,0.25,[1]],["Management Clipboard",10,0.5,[]],["Medium Storage Closet",225,0.5,[3,7]],["Medium Storage Rack",45,0.5,[3,7]],["Mega Bean",7,0.5,[5,6]],["Mesh Top",100,0.5,[10]],["Metal Sign",20,0.5,[2]],["Metal Square Table",60,0.5,[3,7]],["Mixing Station",500,0.5,[3,7,8]],["Mixing Station Mk2",2000,0.5,[8]],["Modern Wall Lamp",100,0.5,[2]],["Moisture-Preserving Pot",50,0.5,[8]],["Molerats Jersey",120,0.5,[10]],["Motor Oil",6,0.5,[5,6]],["Mouth Wash",4,0.5,[5,6]],["Mushroom Bed",200,0.5,[8]],["Mushroom Hat",75,0.5,[4]],["Mushroom Spawn Station",1500,0.5,[8]],["Mushroom Substrate",60,0.5,[4]],["OG Kush Seed",30,0.5,[0]],["Offroad Skateboard",1500,0.5,[]],["Ol' Man Jimmy's",1000,0.8,[2]],["Overalls",50,0.5,[10]],["PGR",30,0.5,[3,4,7]],["Packaging Station",100,0.5,[3,7,8]],["Packaging Station Mk II",750,0.5,[3,7,8]],["Paisley Bandana",80,0.5,[]],["Panzer Helmet",250,0.5,[]],["Paracetamol",3,0.5,[5,6]],["Persian Rug",1200,0.75,[2]],["Plant Trimmers",10,0.5,[3,7]],["Plastic Pot",20,0.5,[8]],["Plastic Table",75,0.5,[3,7]],["Porkpie Hat",60,0.5,[10]],["Pot Sprinkler",200,0.5,[3,7,8]],["Pump Shotgun",7500,0.25,[1]],["Purple Tie-Dye Shirt",100,0.5,[]],["RDX",5000,0.5,[]],["Rectangle Frame Glasses",100,0.5,[10]],["Red Tie",200,0.8,[]],["Revolver",1000,0.25,[1]],["Revolver Cylinder",10,0.5,[1]],["Round Tinted Glasses",150,0.5,[10]],["Safe",500,0.5,[2]],["Sandals",20,0.5,[10]],["Saucepan",15,0.5,[10]],["Sewer Key",1000,0.5,[]],["Shotgun Shell",5,0.5,[1]],["Shutter Shades",100,0.5,[10]],["Silver Aviators",250,0.5,[10]],["Silver Chain",2000,0.8,[2]],["Silver Watch",2000,0.8,[2]],["Skateboard",250,0.5,[]],["Skirt",50,0.5,[10]],["Small Round Glasses",100,0.5,[10]],["Small Storage Closet",150,0.5,[3,7]],["Small Storage Rack",30,0.5,[3,7]],["Small Trash Can",10,0.5,[]],["Sneakers",40,0.5,[10]],["Soil",10,0.5,[3,7,8]],["Soil Pourer",300,0.5,[3,7,8]],["Sour Diesel Seed",35,0.5,[0]],["Speed Dealer Shades",100,0.5,[10]],["Speed Grow",30,0.5,[3,4,7]],["Spray Bottle",15,0.5,[3,7]],["Spray Paint",10,0.5,[5,6]],["Star Shades",100,0.5,[]],["Suspension Rack",40,0.5,[8]],["T-Shirt",30,0.5,[10]],["TV",300,0.5,[3,7]],["Tactical Vest",150,0.5,[10]],["Toilet (Pre-owned)",200,0.3,[3,7]],["Trash Bag",1,0.5,[3,5,6,7]],["Trash Can",25,0.5,[3,7]],["Trash Crown",5,0.5,[]],["Trash Grabber",20,0.5,[3,7]],["Tube Top",80,0.5,[10]],["USA Bandana",80,0.5,[]],["V-Neck Shirt",40,0.5,[10]],["Vest",100,0.5,[10]],["Viagor",4,0.5,[5,6]],["Wall Clock",40,0.5,[]],["Wall-Mounted Shelf",50,0.5,[2]],["Watering Can",15,0.5,[3,7]],["Wooden Sign",10,0.5,[2]],["Wooden Square Table",50,0.5,[3,7]],["Yellow Tie-Dye Shirt",100,0.5,[]]];
+
+// PawnShopInterface.RandomCurve keyframes: [time, value, inSlope, outSlope]
+const CURVE = [
+  [0.5, 0.5, 1.0, 1.0185315608978271],
+  [0.9569854736328125, 0.9654541015625, 1.0185315608978271, 0.516229510307312],
+  [1.652933955192566, 1.324723243713379, 0.516229510307312, 1.9456721544265747],
+  [2.0, 2.0, 1.9456721544265747, 0.0],
+];
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const f = Math.fround;
+
+// Mono's String.GetHashCode (legacy, non-randomized)
+function stringHash(s) {
+  let h1 = 5381, h2 = 5381;
+  for (let i = 0; i < s.length; i += 2) {
+    h1 = Math.imul(h1, 33) ^ s.charCodeAt(i);
+    if (i + 1 >= s.length) break;
+    h2 = Math.imul(h2, 33) ^ s.charCodeAt(i + 1);
+  }
+  return (h1 + Math.imul(h2, 1566083941)) | 0;
+}
+
+// Unity AnimationCurve.Evaluate (cubic Hermite between keys)
+function evalCurve(x) {
+  if (x <= CURVE[0][0]) return CURVE[0][1];
+  const last = CURVE[CURVE.length - 1];
+  if (x >= last[0]) return last[1];
+  let i = 0;
+  while (x > CURVE[i + 1][0]) i++;
+  const [t0, v0, , out0] = CURVE[i], [t1, v1, in1] = CURVE[i + 1];
+  const dx = t1 - t0, t = (x - t0) / dx, t2 = t * t, t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * v0 + (t3 - 2 * t2 + t) * out0 * dx
+       + (t3 - t2) * in1 * dx + (-2 * t3 + 3 * t2) * v1;
+}
+
+// The seed is only the SECOND character of the item name plus the day number
+function multiplier(name, day) {
+  const key = (name.length > 1 ? name[1] : 'A') + day;
+  let t = f(f(f(stringHash(key)) + 2147483648) * 2.3283064365386963e-10);
+  t = Math.min(1, Math.max(0, t));
+  return evalCurve(f(f(t * 1.5) + 0.5)); // Lerp(0.5, 2, t) -> RandomCurve
+}
+
+function roundHalfEven(x) {
+  const r = Math.round(x);
+  return (Math.abs(x % 1) === 0.5 && r % 2 !== 0) ? r - 1 : r;
+}
+
+// PawnShopInterface.RoundOffer
+function roundOffer(v) {
+  if (v <= 25) return v;
+  const step = v <= 100 ? 5 : v <= 1000 ? 10 : v <= 10000 ? 50 : v <= 100000 ? 100 : v <= 1000000 ? 500 : 1000;
+  return roundHalfEven(v / step) * step;
+}
+
+function offer(item, qty, day) {
+  const [name, price, resell] = item;
+  const mult = multiplier(name, day);
+  return { mult, value: roundOffer(f(price * resell * qty * mult)) };
+}
+
+// Minimal zip reader: lists the entries and inflates them on demand
+function openZip(buf) {
+  const v = new DataView(buf);
+  let eocd = buf.byteLength - 22;
+  while (eocd >= 0 && v.getUint32(eocd, true) !== 0x06054b50) eocd--;
+  if (eocd < 0) throw new Error('not a zip file');
+  const entries = new Map();
+  let p = v.getUint32(eocd + 16, true);
+  for (let n = v.getUint16(eocd + 10, true); n > 0; n--) {
+    const nameLen = v.getUint16(p + 28, true);
+    const name = new TextDecoder().decode(new Uint8Array(buf, p + 46, nameLen)).replace(/\\/g, '/');
+    entries.set(name, { method: v.getUint16(p + 10, true), size: v.getUint32(p + 20, true), local: v.getUint32(p + 42, true) });
+    p += 46 + nameLen + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
+  }
+  async function text(name) {
+    const e = entries.get(name);
+    if (!e) return null;
+    const start = e.local + 30 + v.getUint16(e.local + 26, true) + v.getUint16(e.local + 28, true);
+    const raw = new Uint8Array(buf, start, e.size);
+    if (e.method === 0) return new TextDecoder().decode(raw);
+    if (e.method !== 8) throw new Error('unsupported zip compression');
+    const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Response(stream).text();
+  }
+  return { names: [...entries.keys()], text };
+}
+
+// Returns { day, timeOfDay, version, org, save }. `save` (zip only) reads files relative to the save folder.
+async function loadSave(file) {
+  const buf = await file.arrayBuffer();
+  const isZip = buf.byteLength > 4 && new DataView(buf).getUint16(0, true) === 0x4b50;
+  let save = null, time;
+  if (isZip) {
+    const zip = openZip(buf);
+    const timeFiles = zip.names.filter(n => n === 'Time.json' || n.endsWith('/Time.json')).sort((x, y) => x.length - y.length);
+    if (!timeFiles.length) throw new Error('no Time.json found in the zip');
+    const root = timeFiles[0].slice(0, -'Time.json'.length);
+    save = {
+      files: zip.names.filter(n => n.startsWith(root) && !n.endsWith('/')).map(n => n.slice(root.length)),
+      async json(name) {
+        try { return JSON.parse(await zip.text(root + name)); } catch (e) { return null; }
+      },
+    };
+    time = await save.json('Time.json');
+    if (!time) throw new Error('Time.json is not valid JSON');
+  } else {
+    time = JSON.parse(new TextDecoder().decode(buf));
+  }
+  if (!Number.isInteger(time.ElapsedDays)) throw new Error('no ElapsedDays in Time.json');
+  const game = save && await save.json('Game.json');
+  return { day: time.ElapsedDays, timeOfDay: time.TimeOfDay, version: time.GameVersion, org: (game && game.OrganisationName) || '', save };
+}
+
+// ---- Player stats ----
+const RANKS = ['Street Rat', 'Hoodlum', 'Peddler', 'Hustler', 'Bagman', 'Enforcer', 'Shot Caller', 'Block Boss', 'Underlord', 'Baron', 'Kingpin'];
+const REGIONS = ['Northtown', 'Westville', 'Downtown', 'Docks', 'Suburbia', 'Uptown'];
+const CARTEL = ['Unknown', 'Truced', 'Hostile', 'Defeated'];
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
+// built-in products; the player's own mixes are named in the save's Products.json
+const BASE_PRODUCTS = { ogkush: 'OG Kush', sourdiesel: 'Sour Diesel', greencrack: 'Green Crack', granddaddypurple: 'Granddaddy Purple', meth: 'Meth', cocaine: 'Cocaine', shroom: 'Shroom' };
+// save variable name -> label
+const COUNTERS = {
+  Completed_Contracts_Count: 'Deals completed',
+  SuccessfulSampleCount: 'Free samples accepted',
+  SampleRejectionCount: 'Free samples rejected',
+  Deaddrops_Ordered: 'Dead drops ordered',
+  SownSeedsCount: 'Seeds sown',
+  HarvestedPlantCount: 'Plants harvested',
+  PackagedProductCount: 'Products packaged',
+  Mixing_Operations_Completed: 'Mixes completed',
+  Chemical_Operations_Completed: 'Chemistry operations completed',
+  Oven_Cooks_Completed: 'Oven cooks completed',
+  LaunderingOperationsCompleted: 'Laundering operations completed',
+  LifetimeEmployeesRecruited: 'Employees recruited (lifetime)',
+  TrashContainersBagged: 'Trash cans bagged',
+  TrashRecycled: 'Trash recycled',
+  Sleep_Count: 'Times slept',
+  RunGameHighScore: 'Run game high score',
+};
+
+const esc = t => String(t).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+const cash = v => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const count = v => Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
+const clock = t => String(t).padStart(4, '0').replace(/(..)$/, ':$1');
+const parse = t => { try { return JSON.parse(t); } catch (e) { return null; } };
+const itemId = name => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+const vars = d => Object.fromEntries(((d && d.Variables) || []).map(v => [v.Name, v.Value]));
+
+// Reads the save and returns [{ title, rows: [[label, value, optional link URL], ...] }]. Values are plain text.
+async function buildStats(info) {
+  const { save } = info, sections = [];
+  const add = (title, rows) => { rows = rows.filter(r => r && r[1] !== undefined && r[1] !== ''); if (rows.length) sections.push({ title, rows }); };
+  const meta = await save.json('Metadata.json'), timeData = await save.json('Time.json');
+  const date = d => d ? `${d.Year}-${String(d.Month).padStart(2, '0')}-${String(d.Day).padStart(2, '0')}` : undefined;
+  const playtime = timeData && timeData.Playtime;
+  add('Save', [
+    ['Organisation', info.org],
+    ['Day', `${info.day} (${DAYS[info.day % 7]}${info.timeOfDay === undefined ? '' : ', ' + clock(info.timeOfDay)})`],
+    playtime !== undefined && ['Playtime', `${Math.floor(playtime / 3600)} h ${Math.floor(playtime % 3600 / 60)} min`],
+    ['Created', meta && date(meta.CreationDate)],
+    ['Last played', meta && date(meta.LastPlayedDate)],
+    ['Game version', info.version],
+  ]);
+
+  // players: cash is an inventory item
+  const names = Object.assign(Object.fromEntries(ITEMS.map(i => [itemId(i[0]), i[0]])), BASE_PRODUCTS);
+  const products = await save.json('Products.json');
+  for (const k of ['CreatedWeed', 'CreatedMeth', 'CreatedCocaine', 'CreatedShrooms'])
+    for (const pr of (products && products[k]) || []) names[pr.ID] = pr.Name;
+  const players = [];
+  for (const f of save.files.filter(f => /^Players\/[^/]+\/Inventory\.json$/.test(f)).sort()) {
+    const dir = f.slice(0, -'Inventory.json'.length);
+    const items = (((await save.json(f)) || {}).Items || []).map(parse).filter(i => i && i.ID);
+    const pocket = items.filter(i => i.ID === 'cash').reduce((t, i) => t + (i.CashBalance || 0), 0);
+    const carried = items.filter(i => i.ID !== 'cash').map(i => ({ id: i.ID, name: names[i.ID] || i.ID, qty: i.Quantity || 1 }));
+    const held = carried.map(i => `${i.name}${i.qty > 1 ? ' ×' + i.qty : ''}`);
+    const worn = (((await save.json(dir + 'Clothing.json')) || {}).Items || []).map(parse).filter(i => i && i.ID).map(i => names[i.ID] || i.ID);
+    // Player.json's PlayerCode is the player's Steam64 ID; the save has no player names
+    const steamId = String(((await save.json(dir + 'Player.json')) || {}).PlayerCode || '');
+    const number = players.length + 1;
+    players.push({ number, steamId, label: playerNickname(steamId) || `Player ${number}`, cash: pocket, carried, held, worn, vars: vars(await save.json(dir + 'Variables.json')) });
+  }
+
+  const moneyData = await save.json('Money.json');
+  add('Money', [
+    ['Cash on hand', players.length ? cash(players.reduce((t, p) => t + p.cash, 0)) : undefined],
+    ['Online balance', moneyData && cash(moneyData.OnlineBalance)],
+    ['Net worth', moneyData && cash(moneyData.Networth)],
+    ['Lifetime earnings', moneyData && cash(moneyData.LifetimeEarnings)],
+  ]);
+
+  const rank = await save.json('Rank.json');
+  if (rank) add('Rank', [
+    ['Rank', `${RANKS[rank.Rank] || 'Rank ' + rank.Rank} ${ROMAN[rank.Tier] || rank.Tier}`],
+    ['XP in this tier', count(rank.XP)],
+    ['Total XP', count(rank.TotalXP)],
+    ['Regions unlocked', (rank.UnlockedRegions || []).map(r => REGIONS[r] || r).join(', ')],
+  ]);
+
+  // properties and businesses: one file each, named after the place
+  const places = { Properties: [], Businesses: [] };
+  let employees = 0;
+  for (const f of save.files.filter(f => /^(Properties|Businesses)\/[^/]+\.json$/.test(f)).sort()) {
+    const d = await save.json(f);
+    if (!d || !d.IsOwned) continue;
+    const n = (d.Employees || []).length;
+    employees += n;
+    places[f.split('/')[0]].push(f.split('/')[1].slice(0, -5) + (n ? ` (${n} staff)` : ''));
+  }
+  const npcs = ((await save.json('NPCs.json')) || {}).NPCs || [];
+  let customers = 0, unlocked = 0, dealers = 0, recruited = 0, dealerCash = 0, debt = 0;
+  for (const npc of npcs) {
+    const base = parse(npc.BaseData) || {}, extra = Object.fromEntries((npc.AdditionalDatas || []).map(a => [a.Name, parse(a.Contents)]));
+    if (extra.CustomerData) { customers++; if (extra.Relationship && extra.Relationship.Unlocked) unlocked++; }
+    if (npc.DataType === 'DealerData') { dealers++; if (base.Recruited) { recruited++; dealerCash += base.Cash || 0; } }
+    if (npc.DataType === 'SupplierData') debt += base.debt || 0;
+  }
+  const vehicles = ((await save.json('OwnedVehicles.json')) || {}).Vehicles || [];
+  add('Empire', [
+    ['Properties owned', places.Properties.join(', ')],
+    ['Businesses owned', places.Businesses.join(', ')],
+    ['Employees', count(employees)],
+    npcs.length && ['Customers unlocked', `${unlocked} of ${customers}`],
+    npcs.length && ['Dealers recruited', `${recruited} of ${dealers}`],
+    npcs.length && ['Cash held by dealers', cash(dealerCash)],
+    npcs.length && ['Debt to suppliers', cash(debt)],
+    ['Vehicles', vehicles.map(v => `${v.VehicleCode}${v.Color ? ' (' + v.Color + ')' : ''}`).join(', ')],
+  ]);
+
+  if (products) add('Products', [
+    ['Products discovered', count((products.DiscoveredProducts || []).length)],
+    ['Mix recipes', count((products.MixRecipes || []).length)],
+    ['Created strains', ['Weed', 'Meth', 'Cocaine', 'Shrooms'].map(k => `${(products['Created' + k] || []).length} ${k.toLowerCase()}`).join(', ')],
+    ['Favourites', (products.FavouritedProducts || []).map(id => names[id] || id).join(', ')],
+  ]);
+
+  const all = Object.assign({}, ...players.map(p => p.vars), vars(await save.json('Variables.json')));
+  add('Activity', Object.entries(COUNTERS).map(([k, label]) => all[k] !== undefined && [label, count(all[k])]));
+
+  const quests = ((await save.json('Quests.json')) || {}).Quests || [];
+  if (quests.length) add('Quests', [
+    ['Completed', count(quests.filter(q => q.State === 2).length)],
+    ['Active', quests.filter(q => q.State === 1).map(q => q.Title).join(', ') || 'none'],
+  ]);
+
+  const cartel = await save.json('Cartel.json');
+  if (cartel) add('Cartel', [
+    ['Status', CARTEL[cartel.Status] || cartel.Status],
+    ...(cartel.RegionInfluence || []).map(r => [`Influence in ${REGIONS[r.Region] || r.Region}`, Math.round(r.Influence * 100) + '%']),
+  ]);
+
+  players.forEach(p => add(players.length > 1 || playerNickname(p.steamId) ? p.label : 'Player', [
+    ['Steam ID', p.steamId, steamProfileUrl(p.steamId)],
+    ['Cash', cash(p.cash)],
+    ['Carrying', p.held.join(', ') || 'nothing'],
+    ['Wearing', p.worn.join(', ')],
+  ]));
+  return Object.assign(sections, { players });
+}
+
+// Every store-bought item, priced on its best day from `day` to `day + span`, most profitable first
+function bestDeals(day, span) {
+  const deals = [];
+  for (const item of ITEMS) {
+    if (!item[3].length) continue;
+    let top = null;
+    for (let d = day; d <= day + span; d++) {
+      const o = offer(item, 1, d);
+      if (!top || o.value > top.value) top = { day: d, value: o.value, mult: o.mult };
+    }
+    deals.push({ item, ...top, profit: top.value - item[1] });
+  }
+  return deals.sort((a, b) => b.profit - a.profit || a.item[0].localeCompare(b.item[0]));
+}
+
+// ==================== UI ====================
+const money = v => '$' + v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+const $ = id => document.getElementById(id);
+const when = (d, today) => `${DAYS[d % 7]}, day ${d}` + (d === today ? ' (today)' : '');
+const shopsOf = item => item[3].map(i => SHOPS[i]).join(', ');
+const pawnRange = item => `${money(item[1] * item[2] * 0.5)} – ${money(item[1] * item[2] * 2)}`;
+
+// localStorage is best-effort everywhere: private browsing or a full quota just means nothing is remembered
+const store = {
+  get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); return true; } catch (e) { return false; } },
+  remove(key) { try { localStorage.removeItem(key); } catch (e) {} },
+};
+const TAB_KEY = 's1tools.tab', SECTION_KEY = 's1tools.section.', DAY_KEY = 's1tools.day', SAVE_KEY = 's1tools.save';
+const MAX_STORED_SAVE = 3 * 1024 * 1024;
+
+const SECTION_DESCRIPTIONS = {
+  Save: 'Which save this is and how far along it is.',
+  Money: 'Cash is what the players are carrying; the rest comes from Money.json.',
+  Rank: 'Current rank and the regions it has unlocked.',
+  Empire: 'What you own and who works for you.',
+  Products: 'What you have discovered and mixed.',
+  Activity: 'Lifetime counters the game keeps for quests and achievements.',
+  Quests: 'Quest progress.',
+  Cartel: 'Standing with the cartel and its influence in each region.',
+};
+
+// Planned tools. `needs` is 'save' (data already in the save file) or 'code' (game code or assets still to be analysed).
+const WIP_TOOLS = [
+  { title: 'Your mixes', needs: 'save', text: 'Every product you have created with its effects, the recipe chain that made it, and the price you list it at.', detail: 'Products.json already holds the recipes, effects and prices.' },
+  { title: 'Customers', needs: 'save', text: 'Each customer\'s relationship, addiction, product preferences, deals offered and completed, and which dealer serves them.', detail: 'All of it is in NPCs.json.' },
+  { title: 'Dealers', needs: 'save', text: 'Who is recruited, which customers each dealer covers, and how much cash is waiting to be collected.', detail: 'All of it is in NPCs.json.' },
+  { title: 'Deal history', needs: 'save', text: 'Income per day, per product and per customer, split between your own deals and your dealers\'.', detail: 'Products.json keeps the last 500 deal receipts.' },
+  { title: 'Compare saves', needs: 'save', text: 'Load two saves and see them side by side: money, rank, production counters. (Players within one save are already covered by the Compare Players tab.)', detail: 'Reuses the Save Stats sections.' },
+  { title: 'Graffiti viewer', needs: 'save', text: 'Draw the graffiti stored in the save.', detail: 'Graffiti.json stores the spray strokes; the stroke format still has to be worked out.' },
+  { title: 'Mix calculator', needs: 'code', text: 'Pick a base product and ingredients and see the resulting effects and market value before spending anything.', detail: 'Needs the mixing rules and effect values from the game code and assets.' },
+  { title: 'Product pricing advisor', needs: 'code', text: 'The highest price each product can be listed at before customers start refusing it.', detail: 'Needs the market value formula and how customers judge a price.' },
+  { title: 'Counter-offer odds', needs: 'code', text: 'The chance a customer accepts a counter-offer, given their relationship and addiction.', detail: 'Needs the customer offer evaluation code.' },
+  { title: 'Pawn shop haggling', needs: 'code', text: 'How far above the opening offer you can push before the owner gets angry and refuses.', detail: 'The method (EvaluateCounter) and the anger meter are located but not analysed.' },
+  { title: 'Rank and XP planner', needs: 'code', text: 'XP needed for each rank and tier, and which items and regions each one unlocks.', detail: 'Needs the XP curve from the code; item rank requirements are in the asset files.' },
+  { title: 'Property and wage planner', needs: 'code', text: 'Employees and stations per property, with the daily wage bill.', detail: 'Staff and stations are in the save; wages need the game data.' },
+  { title: 'Laundering planner', needs: 'code', text: 'How much each business can launder per day and how long it takes to clean a given amount.', detail: 'Running operations are in the save; capacities need the game data.' },
+  { title: 'Casino odds', needs: 'code', text: 'Payout tables and expected return for the slot machines, blackjack and Ride the Bus.', detail: 'Needs the casino game code.' },
+  { title: 'Sewer mushroom map', needs: 'code', text: 'Where today\'s sewer mushrooms are.', detail: 'The save lists the active location numbers; their coordinates are in the asset files.' },
+];
+
+// ---- tabs and the one-section-at-a-time picker ----
+function showTab(tab) {
+  if (!$('panel-' + tab) || (tab === 'compare' && $('tabCompare').disabled)) tab = 'pawn';
+  document.querySelectorAll('.panel').forEach(p => { p.hidden = p.id !== 'panel-' + tab; });
+  document.querySelectorAll('.view-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  store.set(TAB_KEY, tab);
+}
+
+// Adds a "Section" dropdown with Prev/Next above `container` and shows only the chosen card.
+function buildSectionSelector(container, key) {
+  const old = container.previousElementSibling;
+  if (old && old.classList.contains('section-picker')) old.remove();
+  const sections = Array.from(container.children).filter(el => el.dataset && el.dataset.sectionTitle);
+  if (sections.length < 2) return;
+  const bar = document.createElement('div');
+  bar.className = 'picker-bar section-picker';
+  bar.innerHTML = '<label>Section</label><select></select><div class="section-nav"><button type="button">&lsaquo; Prev</button><button type="button">Next &rsaquo;</button></div>';
+  const select = bar.querySelector('select'), [prev, next] = bar.querySelectorAll('button');
+  sections.forEach(el => select.add(new Option(el.dataset.sectionTitle, el.dataset.sectionTitle)));
+  const index = () => sections.findIndex(el => el.dataset.sectionTitle === select.value);
+  const choose = title => {
+    select.value = title;
+    sections.forEach(el => { el.hidden = el.dataset.sectionTitle !== title; });
+    prev.disabled = index() <= 0;
+    next.disabled = index() >= sections.length - 1;
+    store.set(SECTION_KEY + key, title);
+  };
+  const saved = store.get(SECTION_KEY + key);
+  choose(sections.some(el => el.dataset.sectionTitle === saved) ? saved : sections[0].dataset.sectionTitle);
+  select.addEventListener('change', () => choose(select.value));
+  prev.addEventListener('click', () => choose(sections[index() - 1].dataset.sectionTitle));
+  next.addEventListener('click', () => choose(sections[index() + 1].dataset.sectionTitle));
+  container.parentNode.insertBefore(bar, container);
+}
+
+// ---- Pawn Shop ----
+const currentDay = () => Math.max(0, parseInt($('day').value) || 0);
+
+function renderBest() {
+  const day = currentDay(), span = Math.min(365, Math.max(0, parseInt($('span').value) || 0));
+  const deals = bestDeals(day, span), winners = deals.filter(d => d.profit > 0), top = deals[0];
+  $('bestSummary').innerHTML = (winners.length
+    ? `<div class="note">Buy <b>${esc(top.item[0])}</b> at ${esc(shopsOf(top.item))} for ${money(top.item[1])} and pawn it on ` +
+      `<b>${when(top.day, day)}</b> for ${money(top.value)}: <span class="good">+${money(top.profit)}</span> each.</div>`
+    : `<div class="note">Nothing sells for more than its store price between day ${day} and day ${day + span}. ` +
+      `The best multiplier in that window is &times;${top.mult.toFixed(3)} on ${when(top.day, day)}.</div>`) +
+    `<p class="section-desc" style="margin-top:0">The artworks and the Golden Toilet are limited to a stock of 1 at the boutique.</p>`;
+  $('bestRows').innerHTML = winners.map(d =>
+    `<tr><td>${esc(d.item[0])}</td><td>${esc(shopsOf(d.item))}</td><td>${money(d.item[1])}</td>` +
+    `<td>${when(d.day, day)}</td><td>${money(d.value)}</td><td class="good">+${money(d.profit)}</td>` +
+    `<td>${Math.round(100 * d.profit / d.item[1])}%</td></tr>`).join('') ||
+    '<tr><td colspan="7" class="empty">No profitable items in this window.</td></tr>';
+}
+
+function renderSingle() {
+  const item = ITEMS[$('item').value] || ITEMS[0];
+  const qty = Math.max(1, parseInt($('qty').value) || 1), day = currentDay();
+  const base = item[1] * item[2] * qty, storePrice = item[1] * qty;
+  const o = offer(item, qty, day);
+  const vsStore = v => {
+    if (!item[3].length) return '';
+    const d = v - storePrice;
+    return `<span class="${d > 0 ? 'good' : 'bad'}">${d > 0 ? '+' : '−'}${money(Math.abs(d))}</span>`;
+  };
+  $('offer').textContent = money(o.value);
+  $('detail').innerHTML = `${when(day)} &mdash; base resale ${money(base)} &times; ${o.mult.toFixed(3)}. ` +
+    `It can range from ${money(base * 0.5)} to ${money(base * 2)} depending on the day.<br>` +
+    (item[3].length
+      ? `Store price ${money(storePrice)} at ${esc(shopsOf(item))} &mdash; selling today is ${vsStore(o.value)} vs. buying it.`
+      : `Not sold in any store (listed value ${money(storePrice)}).`);
+  let rows = '';
+  for (let d = day; d < day + 14; d++) {
+    const r = offer(item, qty, d);
+    rows += `<tr class="${d === day ? 'sel' : ''}"><td>${d}</td><td>${DAYS[d % 7]}</td><td>${r.mult.toFixed(3)}</td><td>${money(r.value)}</td><td>${vsStore(r.value)}</td></tr>`;
+  }
+  $('rows').innerHTML = rows;
+}
+
+function renderCalendar() {
+  const day = currentDay();
+  let rows = '';
+  for (let d = day; d < day + 28; d++) {
+    const m = multiplier('Gold Bar', d);
+    rows += `<tr class="${d === day ? 'sel' : ''}"><td>${d}</td><td>${DAYS[d % 7]}</td><td>&times;${m.toFixed(3)}</td>` +
+      `<td><div class="barwrap"><div class="bar" style="width:${Math.round(m / 2 * 100)}%"></div></div></td></tr>`;
+  }
+  $('calendarRows').innerHTML = rows;
+}
+
+function renderPawn() {
+  const day = currentDay();
+  $('dayHint').textContent = `${DAYS[day % 7]} · elapsed days, 0 = the first Monday`;
+  store.set(DAY_KEY, String(day));
+  renderBest(); renderSingle(); renderCalendar();
+}
+
+// ---- Game Data ----
+function renderItems() {
+  const q = $('itemSearch').value.trim().toLowerCase();
+  const list = ITEMS.filter(i => !q || i[0].toLowerCase().includes(q) || shopsOf(i).toLowerCase().includes(q));
+  $('itemCount').textContent = `(${list.length} of ${ITEMS.length})`;
+  $('itemRows').innerHTML = list.map(i =>
+    `<tr><td>${esc(i[0])}</td><td>${money(i[1])}</td><td>&times;${i[2]}</td><td>${pawnRange(i)}</td>` +
+    `<td>${esc(shopsOf(i)) || '<span class="empty">not sold</span>'}</td></tr>`).join('') ||
+    '<tr><td colspan="5" class="empty">No items match.</td></tr>';
+}
+
+function renderStore() {
+  const s = Number($('store').value);
+  $('storeRows').innerHTML = ITEMS.filter(i => i[3].includes(s)).map(i =>
+    `<tr><td>${esc(i[0])}</td><td>${money(i[1])}</td><td>${pawnRange(i)}</td></tr>`).join('');
+}
+
+// ---- Save Stats ----
+function statsCard(title, body, desc) {
+  return `<div class="card" data-section-title="${esc(title)}"><h2>${esc(title)}</h2>` +
+    (desc ? `<p class="section-desc">${esc(desc)}</p>` : '') + body + '</div>';
+}
+
+function renderStats(sections) {
+  const container = $('statsSections');
+  if (!sections) {
+    container.innerHTML = '<div class="card"><h2>Save Stats</h2><p class="empty">' +
+      (loaded && !loaded.save ? 'Stats need the whole save as a .zip, not just Time.json.' : 'Drop a save .zip above to see its stats.') + '</p></div>';
+    buildSectionSelector(container, 'stats');
+    return;
+  }
+  const find = (title, label) => {
+    const s = sections.find(s => s.title === title), r = s && s.rows.find(r => r[0] === label);
+    return r ? r[1] : undefined;
+  };
+  const tiles = [['Day', String(loaded.day)], ['Rank', find('Rank', 'Rank')], ['Net worth', find('Money', 'Net worth')],
+    ['Cash on hand', find('Money', 'Cash on hand')], ['Lifetime earnings', find('Money', 'Lifetime earnings')],
+    ['Deals completed', find('Activity', 'Deals completed')], ['Employees', find('Empire', 'Employees')], ['Playtime', find('Save', 'Playtime')]]
+    .filter(t => t[1] !== undefined)
+    .map(t => `<div class="tile"><div class="label">${esc(t[0])}</div><div class="value">${esc(t[1])}</div></div>`).join('');
+  container.innerHTML = statsCard('Overview', `<div class="grid">${tiles}</div>`, 'The headline numbers. Use the Section picker for the detail.') +
+    sections.map(s => statsCard(s.title,
+      '<div class="table-wrap"><table class="kv"><tbody>' + s.rows.map(r => `<tr><td>${esc(r[0])}</td><td>${r[2] ? `<a href="${esc(r[2])}" target="_blank" rel="noopener">${esc(r[1])}</a>` : esc(r[1])}</td></tr>`).join('') + '</tbody></table></div>',
+      SECTION_DESCRIPTIONS[s.title] || (sections.players.some(p => p.label === s.title) || s.title === 'Player' ? 'What this player is carrying.' : ''))).join('');
+  buildSectionSelector(container, 'stats');
+}
+
+// ---- Known Players: Steam IDs seen in loaded saves, with nicknames, remembered in this browser ----
+// Nothing here is hardcoded: every ID comes from a save the visitor loaded themselves.
+const PLAYERS_KEY = 's1tools.players';
+/** steamId -> { nickname, seenIn: [organisation names] } */
+let knownPlayers = new Map(Object.entries(parse(store.get(PLAYERS_KEY)) || {}));
+const saveKnownPlayers = () => store.set(PLAYERS_KEY, JSON.stringify(Object.fromEntries(knownPlayers)));
+function playerNickname(steamId) {
+  const k = knownPlayers.get(steamId);
+  return (k && k.nickname) || '';
+}
+// /profiles/<id64> resolves for any Steam64 ID. Anything else in PlayerCode is shown as text, not linked.
+const steamProfileUrl = id => /^7656119\d{10}$/.test(id) ? 'https://steamcommunity.com/profiles/' + id : undefined;
+
+function rememberPlayers(players, org) {
+  for (const p of players) {
+    if (!p.steamId) continue;
+    const k = knownPlayers.get(p.steamId) || { nickname: '', seenIn: [] };
+    if (org && !k.seenIn.includes(org)) k.seenIn.push(org);
+    knownPlayers.set(p.steamId, k);
+  }
+  saveKnownPlayers();
+}
+
+function renderKnownPlayers() {
+  const current = (loadedStats && loadedStats.players) || [];
+  $('knownCount').textContent = `(${knownPlayers.size})`;
+  $('knownRows').innerHTML = [...knownPlayers.entries()].map(([id, k]) => {
+    const here = current.find(p => p.steamId === id), url = steamProfileUrl(id);
+    return `<tr><td><input type="text" class="nickname-input" data-steam-id="${esc(id)}" value="${esc(k.nickname)}" placeholder="Add a nickname" maxlength="40"></td>` +
+      `<td class="mono cell-steam-id">${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(id)}</a>` : esc(id)}</td>` +
+      `<td>${esc(k.seenIn.join(', ')) || '—'}</td><td>${here ? 'Player ' + here.number : '—'}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" class="empty">None recorded. Load a save to add its players.</td></tr>';
+  $('knownRows').querySelectorAll('.nickname-input').forEach(input => input.addEventListener('change', async () => {
+    const k = knownPlayers.get(input.dataset.steamId);
+    if (!k) return;
+    k.nickname = input.value.trim();
+    saveKnownPlayers();
+    await refreshSaveViews();   // nicknames are used as player labels in Save Stats and Compare Players
+  }));
+}
+
+// Rebuilds everything derived from the loaded save (after loading, removing, or renaming a player).
+async function refreshSaveViews() {
+  loadedStats = loaded && loaded.save ? await buildStats(loaded) : null;
+  renderStats(loadedStats);
+  renderCompare(loadedStats && loadedStats.players);
+  renderKnownPlayers();
+}
+
+// ---- Compare Players: the players inside one save, side by side ----
+const prettyVar = name => name.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\s+/g, ' ').trim();
+const ITEM_BY_ID = Object.fromEntries(ITEMS.map(i => [itemId(i[0]), i]));
+
+// One row per entry of `rows` ({ name, values, format, invert }), one column per player.
+// The best value in a row is green and the worst red; a row where everyone ties is left plain.
+function compareTable(players, nameLabel, rows) {
+  if (!rows.length) return '<p class="empty">Nothing to compare.</p>';
+  return '<div class="table-wrap"><table class="compare-table"><thead><tr><th>' + esc(nameLabel) + '</th>' +
+    players.map(p => {
+      const url = steamProfileUrl(p.steamId);
+      return `<th>${esc(p.label)}` + (url ? `<div class="mono cell-steam-id" style="text-transform:none; font-weight:normal;"><a href="${esc(url)}" target="_blank" rel="noopener" title="Open Steam profile">${esc(p.steamId)}</a></div>` : '') + '</th>';
+    }).join('') + '</tr></thead><tbody>' +
+    rows.map(({ name, values, format, invert, plain }) => {
+      const nums = values.filter(v => typeof v === 'number');
+      const best = invert ? Math.min(...nums) : Math.max(...nums), worst = invert ? Math.max(...nums) : Math.min(...nums);
+      const tied = plain || nums.length < 2 || nums.every(v => v === nums[0]);
+      return `<tr><td>${esc(name)}</td>` + values.map(v => {
+        const cls = tied || typeof v !== 'number' ? '' : v === best ? 'cmp-best' : v === worst ? 'cmp-worst' : '';
+        return `<td class="${cls}">${esc(v === undefined ? '—' : (format || count)(v))}</td>`;
+      }).join('') + '</tr>';
+    }).join('') + '</tbody></table></div>';
+}
+
+// Rows for the union of every player's `name -> value` map, biggest single value first.
+function unionRows(players, extract, opts) {
+  const maps = players.map(extract), names = [...new Set(maps.flatMap(m => Object.keys(m)))];
+  return names.map(name => Object.assign({ name, values: maps.map(m => m[name]) }, opts))
+    .sort((a, b) => Math.max(...b.values.map(v => v || 0)) - Math.max(...a.values.map(v => v || 0)) || a.name.localeCompare(b.name));
+}
+
+function renderCompare(players) {
+  const available = !!players && players.length > 1;
+  $('tabCompare').disabled = !available;
+  if (!available) {
+    $('compareHeading').textContent = '';
+    $('compareSections').innerHTML = '';
+    buildSectionSelector($('compareSections'), 'compare');
+    if (!$('panel-compare').hidden) showTab('stats');
+    return;
+  }
+  const isNumber = v => v !== '' && !isNaN(Number(v)), isFlag = v => v === 'True' || v === 'False';
+  const resale = p => p.carried.reduce((t, i) => t + (ITEM_BY_ID[i.id] ? ITEM_BY_ID[i.id][1] * ITEM_BY_ID[i.id][2] * i.qty : 0), 0);
+  const leaderboard = [
+    { name: 'Cash on hand', values: players.map(p => p.cash), format: cash },
+    { name: 'Items carried', values: players.map(p => p.carried.reduce((t, i) => t + i.qty, 0)) },
+    { name: 'Base resale value of carried items', values: players.map(resale), format: cash },
+    { name: 'Clothing worn', values: players.map(p => p.worn.length) },
+    { name: 'Times slept', values: players.map(p => Number(p.vars.Sleep_Count) || 0) },
+    { name: 'Trash recycled', values: players.map(p => Number(p.vars.TrashRecycled) || 0) },
+    { name: 'Tutorials and introductions done', values: players.map(p => Object.values(p.vars).filter(v => v === 'True').length) },
+  ];
+  const counters = unionRows(players, p => Object.fromEntries(Object.entries(p.vars).filter(e => isNumber(e[1])).map(e => [prettyVar(e[0]), Number(e[1])])));
+  const flags = unionRows(players, p => Object.fromEntries(Object.entries(p.vars).filter(e => isFlag(e[1])).map(e => [prettyVar(e[0]), e[1] === 'True' ? 1 : 0])),
+    { format: v => v ? 'Yes' : 'No', plain: true });
+  const carrying = unionRows(players, p => p.carried.reduce((m, i) => { m[i.name] = (m[i.name] || 0) + i.qty; return m; }, {}));
+  const wearing = unionRows(players, p => Object.fromEntries(p.worn.map(n => [n, 1])), { format: v => v ? 'Yes' : '—', plain: true });
+
+  $('compareHeading').textContent = `Comparing ${players.length} players in this save: ${players.map(p => p.label).join(', ')}. ` +
+    'The save holds no player names: set nicknames in the Known Players tab.';
+  $('compareSections').innerHTML =
+    statsCard('Leaderboard', compareTable(players, 'Metric', leaderboard), 'Per-player totals. The highest value in each row is green, the lowest red.') +
+    statsCard('Counters', compareTable(players, 'Counter', counters), 'Every numeric variable the save keeps per player.') +
+    statsCard('Progress flags', compareTable(players, 'Flag', flags), 'Tutorials seen and characters met, per player.') +
+    statsCard('Carrying', compareTable(players, 'Item', carrying), 'Inventory quantities side by side. A dash means the player has none.') +
+    statsCard('Wearing', compareTable(players, 'Clothing', wearing), 'What each player has equipped.');
+  buildSectionSelector($('compareSections'), 'compare');
+}
+
+// ---- loading a save ----
+let loaded = null;   // result of loadSave() for the current file, plus its file name
+let wantedTab = null;
+let loadedStats = null;   // buildStats() result for the loaded save
+
+function renderSaveList() {
+  $('dropzone').classList.toggle('compact', !!loaded);
+  $('findFileHelp').open = !loaded;
+  if (!loaded) { $('saveList').innerHTML = ''; return; }
+  const time = loaded.timeOfDay === undefined ? '' : ', ' + clock(loaded.timeOfDay);
+  $('saveList').innerHTML = `<div class="save-row"><span class="save-name">${esc(loaded.org || loaded.fileName)} ` +
+    `<span class="save-meta">day ${loaded.day} (${DAYS[loaded.day % 7]}${time})${loaded.version ? ', game version ' + esc(loaded.version) : ''}</span></span>` +
+    `<button type="button" class="save-remove-btn" id="removeSave" title="Remove this save">✕</button></div>`;
+  $('removeSave').addEventListener('click', () => {
+    loaded = null;
+    store.remove(SAVE_KEY);
+    renderSaveList(); refreshSaveViews();
+  });
+}
+
+function toBase64(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function fromBase64(b64) {
+  const s = atob(b64), bytes = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
+  return bytes.buffer;
+}
+
+// `file` needs .name and .arrayBuffer(). `remember` stores it so it is still loaded after a page reload.
+async function handleFile(file, remember) {
+  if (!file) return;
+  $('uploadErrors').innerHTML = '';
+  try {
+    const buf = await file.arrayBuffer();
+    const info = await loadSave({ arrayBuffer: async () => buf });
+    loaded = Object.assign(info, { fileName: file.name });
+    if (remember) {
+      if (buf.byteLength > MAX_STORED_SAVE || !store.set(SAVE_KEY, JSON.stringify({ name: file.name, data: toBase64(buf) }))) store.remove(SAVE_KEY);
+    }
+    $('day').value = info.day;
+    renderSaveList();
+    renderPawn();
+    if (info.save) rememberPlayers((await buildStats(info)).players, info.org);
+    await refreshSaveViews();
+    if (wantedTab === 'compare' && !$('tabCompare').disabled) showTab('compare');
+    wantedTab = null;
+  } catch (err) {
+    $('uploadErrors').innerHTML = `<div class="error">Could not read ${esc(file.name || 'that file')}: ${esc(err.message)}</div>`;
+  }
+}
+
+// ---- "Built ... ago" footer, from public/build.json (written by `npm run build` in CI; absent locally) ----
+function formatTimeAgo(date) {
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  const units = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
+  for (const [label, size] of units) {
+    const n = Math.floor(seconds / size);
+    if (n >= 1) return `${n} ${label}${n === 1 ? '' : 's'} ago`;
+  }
+  return 'just now';
+}
+
+async function loadBuildInfo() {
+  const footer = $('buildInfo');
+  try {
+    const res = await fetch('build.json', { cache: 'no-store' });
+    if (!res.ok) return;
+    const info = await res.json(), builtAt = new Date(info.builtAt);
+    if (isNaN(builtAt.getTime())) return;
+    footer.appendChild(document.createTextNode(`Built ${formatTimeAgo(builtAt)}.`));
+    if (info.commitUrl) {
+      const link = document.createElement('a');
+      link.href = info.commitUrl; link.target = '_blank'; link.rel = 'noopener';
+      link.textContent = 'View commit' + (info.commit ? ` (${info.commit.slice(0, 7)})` : '');
+      footer.append(' ', link);
+    }
+  } catch (e) {
+    // no build.json (local use, or a file:// origin): the footer stays empty
+  }
+}
+
+// ---- guess the visitor's operating system, to point out the matching save location ----
+// Returns 'windows', 'linux', 'mac' or null (phones, tablets, anything unrecognised).
+function guessOS(nav) {
+  const uaData = nav.userAgentData || {};
+  const text = `${uaData.platform || ''} ${nav.platform || ''} ${nav.userAgent || ''}`.toLowerCase();
+  if (uaData.mobile || /android|iphone|ipad|ipod/.test(text)) return null;
+  if (/mac/.test(text) && nav.maxTouchPoints > 1) return null;   // an iPad asking for the desktop site reports itself as a Mac
+  if (/win/.test(text)) return 'windows';
+  if (/mac/.test(text)) return 'mac';
+  if (/linux|x11|cros/.test(text)) return 'linux';
+  return null;
+}
+
+// Marks the matching rows of the "Where do I find my save?" table and moves them to the top.
+function highlightLikelyPaths() {
+  const os = guessOS(navigator), tbody = document.querySelector('.path-table tbody');
+  const rows = [...tbody.querySelectorAll(`tr[data-os="${os}"]`)];
+  rows.reverse().forEach(row => {
+    row.classList.add('likely');
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = 'Looks like your system';
+    row.querySelector('.platform').appendChild(badge);
+    tbody.insertBefore(row, tbody.firstChild);
+  });
+}
+
+// ---- startup ----
+if (typeof document !== 'undefined') {
+  ITEMS.forEach((it, i) => $('item').add(new Option(it[0], i)));
+  SHOPS.forEach((name, i) => $('store').add(new Option(name, i)));
+  $('wipGrid').innerHTML = WIP_TOOLS.map(t =>
+    `<div class="card"><h2>${esc(t.title)} <span class="badge">Work in progress</span></h2><p>${esc(t.text)}</p>` +
+    `<p class="needs"><span class="badge ${t.needs}">${t.needs === 'save' ? 'Save data only' : 'Needs code analysis'}</span> ${esc(t.detail)}</p></div>`).join('');
+
+  const savedDay = parseInt(store.get(DAY_KEY));
+  if (savedDay >= 0) $('day').value = savedDay;
+  ['day', 'span', 'item', 'qty'].forEach(id => $(id).addEventListener('input', renderPawn));
+  $('itemSearch').addEventListener('input', renderItems);
+  $('store').addEventListener('input', renderStore);
+  document.querySelectorAll('.view-tab').forEach(b => b.addEventListener('click', () => { if (!b.disabled) showTab(b.dataset.tab); }));
+
+  const dropzone = $('dropzone'), fileInput = $('fileInput');
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => { handleFile(fileInput.files[0], true); fileInput.value = ''; });
+  // a file dropped anywhere on the page is loaded; without this the browser would navigate to it
+  document.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+  document.addEventListener('dragleave', e => { if (!e.relatedTarget) dropzone.classList.remove('drag'); });
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag');
+    handleFile(e.dataTransfer.files[0], true);
+  });
+  document.querySelectorAll('.copy-path-btn').forEach(btn => btn.addEventListener('click', async e => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(btn.parentNode.querySelector('.path-text').textContent);
+      btn.textContent = 'Copied'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    } catch (err) {}
+  }));
+
+  $('clearKnownBtn').addEventListener('click', () => {
+    knownPlayers = new Map();
+    store.remove(PLAYERS_KEY);
+    if (loadedStats) rememberPlayers(loadedStats.players, loaded.org);   // the loaded save's own players stay listed, without nicknames
+    refreshSaveViews();
+  });
+
+  highlightLikelyPaths();
+  renderPawn(); renderItems(); renderStore(); renderStats(null); renderKnownPlayers();
+  buildSectionSelector($('panel-pawn').querySelector('.sections'), 'pawn');
+  buildSectionSelector($('panel-data').querySelector('.sections'), 'data');
+  wantedTab = store.get(TAB_KEY);   // 'compare' can only be restored once the remembered save has loaded
+  showTab(wantedTab || 'pawn');
+
+  // reload the save remembered from the last visit
+  const remembered = parse(store.get(SAVE_KEY));
+  if (remembered && remembered.data) {
+    try {
+      const buf = fromBase64(remembered.data);
+      handleFile({ name: remembered.name, arrayBuffer: async () => buf }, false);
+    } catch (e) { store.remove(SAVE_KEY); }
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+  loadBuildInfo();
+}
+</script>
+</body>
+</html>

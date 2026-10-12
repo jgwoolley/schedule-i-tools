@@ -1,0 +1,15 @@
+{
+  "name": "Nf3t's Schedule I Tools",
+  "short_name": "Nf3t's Schedule I Tools",
+  "description": "Pawn shop calculator and save file viewer for Schedule I. Everything runs in your browser.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "./index.html",
+  "display": "standalone",
+  "background_color": "#16130f",
+  "theme_color": "#c99a44",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

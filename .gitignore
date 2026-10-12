@@ -1,0 +1,7 @@
+node_modules/
+# written by `npm run build` in CI
+public/build.json
+# output of the pawn-extract container (includes a ~36 MB dump.cs)
+pawn-extract/out/
+# save files contain a Steam ID
+*.zip

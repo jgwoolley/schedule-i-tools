@@ -1,0 +1,9 @@
+{
+  "name": "schedule-i-tools",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Pawn shop calculator and save file viewer for Schedule I, running entirely in the browser.",
+  "scripts": {
+    "build": "node scripts/generate-build-info.js"
+  }
+}
