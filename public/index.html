@@ -169,6 +169,21 @@
   }
   .credits ul { margin: 0.4rem 0; padding-left: 1.2rem; }
   .build-info { margin-top: 0.75rem; color: var(--muted); font-size: 0.72rem; }
+  .site-header { display: flex; align-items: center; gap: 1.5rem; padding-bottom: 0.75rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+  .site-header .brand { font-weight: 700; font-size: 1.1rem; color: var(--text); display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+  .site-header .brand .app-icon { width: 1.6rem; height: 1.6rem; }
+  .site-header .nav-info { margin-left: auto; }
+  .nav-dropdown { position: relative; }
+  .nav-dropdown-toggle { font: inherit; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; }
+  .nav-dropdown-toggle:hover, .nav-dropdown-toggle[aria-expanded="true"] { text-decoration: underline; }
+  .nav-dropdown-panel { position: absolute; top: calc(100% + 8px); left: 0; z-index: 20; min-width: 14rem; flex-direction: column; gap: 0.15rem; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .nav-dropdown .nav-dropdown-panel-right { left: auto; right: 0; }
+  .nav-dropdown-panel[hidden] { display: none; }
+  .nav-dropdown-panel:not([hidden]) { display: flex; }
+  .nav-dropdown-panel a, .nav-dropdown-panel a:visited { padding: 0.35rem 0.5rem; border-radius: 4px; white-space: nowrap; text-decoration: none; color: var(--text); }
+  .nav-dropdown-panel a:hover, .nav-dropdown-panel a:focus-visible, .nav-dropdown-panel a:active { background: var(--bg); color: var(--accent); outline: none; }
+  .site-header .brand, .site-header .brand:visited, .site-header .brand:hover, .site-header .brand:active { color: var(--text); }
+  .nav-dropdown-toggle:focus-visible { outline: 1px solid var(--accent); outline-offset: 3px; }
   @media (max-width: 640px) {
     body { padding: 1rem; }
     .path-table, .path-table tbody, .path-table tr, .path-table td { display: block; width: 100%; }
@@ -180,7 +195,15 @@
 </head>
 <body>
 
-<h1><img src="icon.svg" alt="" class="app-icon">Schedule I Tools</h1>
+<header class="site-header">
+  <a class="brand" href="./"><img src="icon.svg" alt="" class="app-icon">Schedule I Tools</a>
+  <div class="nav-dropdown nav-info">
+    <button type="button" class="nav-dropdown-toggle" aria-haspopup="true" aria-expanded="false">More</button>
+    <div class="nav-dropdown-panel nav-dropdown-panel-right" hidden>
+      <a href="https://jgwoolley.github.io/vintage-story-wiki/en/nf3t/">NF3t tools</a>
+    </div>
+  </div>
+</header>
 <p class="subtitle">A pawn shop calculator and save viewer for Schedule I. Drop a zip of your save folder to fill in the day and see your stats. Everything is read in your browser; nothing is uploaded.</p>
 
 <div id="dropzone">
@@ -349,6 +372,18 @@
 
 <footer id="buildInfo" class="build-info"></footer>
 
+<script>
+// Header dropdown: click toggles the panel; outside click or Escape closes it.
+(function () {
+  const dropdowns = [...document.querySelectorAll(".nav-dropdown")]
+    .map((el) => ({ toggle: el.querySelector(".nav-dropdown-toggle"), panel: el.querySelector(".nav-dropdown-panel") }));
+  const setOpen = (d, open) => { d.panel.hidden = !open; d.toggle.setAttribute("aria-expanded", String(open)); };
+  const closeAll = () => dropdowns.forEach((d) => setOpen(d, false));
+  for (const d of dropdowns) d.toggle.addEventListener("click", () => { const o = d.panel.hidden; closeAll(); setOpen(d, o); });
+  document.addEventListener("click", (e) => { if (!dropdowns.some((d) => d.toggle.contains(e.target) || d.panel.contains(e.target))) closeAll(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
+})();
+</script>
 <script>
 // ITEMS: [name, BasePurchasePrice, ResellMultiplier, [indexes into SHOPS that sell it]]
 // Legal items only (the pawn slots reject everything else, and cash). The store price is always
